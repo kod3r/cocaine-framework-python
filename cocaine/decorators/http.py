@@ -37,7 +37,7 @@ class _HTTPResponse(object):
         self._stream.write(body)
 
     def write_head(self, code, headers):
-        self._stream.write(code, headers)
+        self._stream.write((code, headers))
 
     def close(self):
         self._stream.close()
@@ -57,6 +57,7 @@ class _HTTPRequest(object):
         self._meta['method'] = method
         self._meta['version'] = version
         self._meta['host'] = self._headers.get('host', '')
+        self._meta['query_string'] = urlparse.urlparse(url).query
         tmp = urlparse.parse_qs(urlparse.urlparse(url).query)
         self._request = dict((k,v[0]) for k,v in tmp.iteritems() if len(v) > 0)
 
