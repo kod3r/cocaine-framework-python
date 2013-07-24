@@ -19,6 +19,8 @@
 #    along with this program. If not, see <http://www.gnu.org/licenses/>. 
 #
 
+import urlparse
+
 import msgpack
 
 from _callablewrappers import proxy_factory
@@ -35,7 +37,7 @@ class _HTTPResponse(object):
         self._stream.write(body)
 
     def write_head(self, code, headers):
-        self._stream.write({'code': code, 'headers' : headers})
+        self._stream.write(code, headers)
 
     def close(self):
         self._stream.close()
@@ -48,12 +50,20 @@ class _HTTPResponse(object):
 class _HTTPRequest(object):
 
     def __init__(self, data):
-        self._data = msgpack.unpackb(data)
+        #self._data = msgpack.unpackb(data)
+        method, url, version, headers, self._body = msgpack.unpackb(data)
+        self._meta = dict()
+        self._headers = dict(headers)
+        self._meta['method'] = method
+        self._meta['version'] = version
+        self._meta['host'] = self._headers.get('host', '')
+        tmp = urlparse.parse_qs(urlparse.urlparse(url).query)
+        self._request = dict((k,v[0]) for k,v in tmp.iteritems() if len(v) > 0)
 
     @property
     def body(self):
         """Return request body"""
-        return self._data['body']
+        return self._body
 
     @property
     def meta(self):
@@ -73,11 +83,11 @@ class _HTTPRequest(object):
         'server_addr': '1.1.1.1',
         'url': 'someurl'}
         """
-        return self._data['meta']
+        return self._meta
 
     @property
     def request(self):
-        return self._data['request']
+        return self._request
 
 
 def http_request_decorator(obj):
