@@ -279,7 +279,7 @@ def generate_info():
     return msg
 
 
-def handle_request(request):
+def dispatch_by_uri(request):
     match = URL_REGEX.match(request.uri)
 
     if match is None:
@@ -320,6 +320,32 @@ def handle_request(request):
         
     data = pack_httprequest(request)
     process(request, s, event, data)
+
+X_Cocaine_App = "X-Cocaine-App"
+X_Cocaine_Event = "X-Cocaine-Event"
+
+def dispatch_by_headers(request):
+    name = request.headers[X_Cocaine_App]
+    event = request.headers[X_Cocaine_Event]
+    s = get_service(name)
+    if s is None:
+        message = "Current application %s is unavailable" % name
+        request.write("%s 502 Not found\r\nContent-Length: %d\r\n\r\n%s" % (
+            request.version, len(message), message))
+        request.finish()
+        return
+        
+    data = pack_httprequest(request)
+    process(request, s, event, data)
+    
+
+def handle_request(request):
+    if X_Cocaine_App in request.headers and X_Cocaine_Event in request.headers:
+        logger.info('Dispacth by headers')
+        dispatch_by_headers(request)
+    else:
+        logger.info('Dispacth by uri')
+        dispatch_by_uri(request)
 
 
 def main():
